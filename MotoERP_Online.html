@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MotoERP — طنجة & الدار البيضاء</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f5f5f3;--surface:#fff;--surface2:#f9f9f7;--border:#e0e0da;--text:#1a1a18;--text2:#555550;--text3:#8a8a85;--accent:#1a6ef5;--accent-bg:#e8f0fe;--accent-text:#1a4db5;--success:#16a34a;--success-bg:#dcfce7;--success-text:#15803d;--warning:#d97706;--warning-bg:#fef3c7;--warning-text:#b45309;--danger:#dc2626;--danger-bg:#fee2e2;--danger-text:#b91c1c;--purple:#7c3aed;--purple-bg:#ede9fe;--purple-text:#6d28d9;--radius:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.app{display:flex;min-height:100vh}
+.sidebar{width:230px;min-width:230px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;right:0;bottom:0;z-index:50;overflow-y:auto}
+.logo{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.logo-title{font-size:17px;font-weight:700}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.sync-status{display:flex;align-items:center;gap:6px;font-size:11px;margin-top:6px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--success)}
+.sync-dot.offline{background:var(--danger)}
+.sync-dot.syncing{background:var(--warning);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.nav-section{font-size:10px;font-weight:600;color:var(--text3);padding:14px 16px 4px;letter-spacing:.08em;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text2);border-right:3px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-bg);color:var(--accent-text);border-right-color:var(--accent);font-weight:500}
+.main{flex:1;margin-right:230px;min-height:100vh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40}
+.page-title{font-size:16px;font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.content{padding:24px;flex:1}
+.btn{padding:7px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit;transition:background .12s}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#155de0}
+.btn-danger{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--surface);border-radius:12px;padding:16px;border:1px solid var(--border)}
+.stat-label{font-size:12px;color:var(--text3);margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:600}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.card{background:var(--surface);border-radius:12px;border:1px solid var(--border);margin-bottom:16px}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.card-title{font-size:14px;font-weight:600}
+.card-body{padding:18px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:right;padding:9px 14px;font-size:11px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface2)}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;display:inline-block}
+.badge-tanger{background:var(--accent-bg);color:var(--accent-text)}
+.badge-casa{background:var(--success-bg);color:var(--success-text)}
+.badge-both{background:var(--purple-bg);color:var(--purple-text)}
+.status{padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block;white-space:nowrap}
+.s-sold{background:var(--success-bg);color:var(--success-text)}
+.s-stock{background:var(--accent-bg);color:var(--accent-text)}
+.s-transfer{background:var(--warning-bg);color:var(--warning-text)}
+.s-pending{background:var(--warning-bg);color:var(--warning-text)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:12px;color:var(--text2);font-weight:500}
+.form-group input,.form-group select,.form-group textarea{border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);padding:8px 11px;font-size:13px;color:var(--text);font-family:inherit;outline:none;transition:border .12s}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal{background:var(--surface);border-radius:14px;border:1px solid var(--border);width:520px;max-width:100%;max-height:90vh;overflow-y:auto}
+.modal-header{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface)}
+.modal-title{font-size:15px;font-weight:600}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--surface)}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:20px;padding:2px;border-radius:4px}
+.close-btn:hover{color:var(--text)}
+.chassis-detail{background:var(--surface2);border-radius:var(--radius);padding:14px;margin-top:14px}
+.chassis-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.chassis-row:last-child{border-bottom:none}
+.chassis-label{color:var(--text3)}
+.chassis-val{font-weight:500}
+.search-wrap{display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);overflow:hidden}
+.search-wrap input{border:none;background:transparent;padding:7px 12px;font-size:13px;color:var(--text);outline:none;flex:1;font-family:inherit}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.alert-row{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.alert-row:last-child{border-bottom:none}
+.alert-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.progress-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:5px;min-width:80px}
+.progress-fill{height:100%;border-radius:3px;background:var(--accent)}
+.loc-transfer{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.loc-box{flex:1;padding:14px;border-radius:var(--radius);border:1px solid var(--border);text-align:center;background:var(--surface2)}
+.loc-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.loc-count{font-size:24px;font-weight:700;color:var(--accent)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.empty-state{text-align:center;padding:40px;color:var(--text3)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:10px 20px;border-radius:var(--radius);font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.hidden{display:none!important}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;gap:14px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-overlay" class="loading-overlay">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--text2)">جاري الاتصال بقاعدة البيانات...</div>
+</div>
+
+<div class="app">
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-title">🏍️ MotoERP</div>
+    <div class="logo-sub">طنجة & الدار البيضاء</div>
+    <div class="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text" style="color:var(--text3)">متصل</span>
+    </div>
+  </div>
+  <div class="nav-section">عام</div>
+  <div class="nav-item active" onclick="nav('dashboard',this)"><span>📊</span> لوحة القيادة</div>
+  <div class="nav-section">المخزون</div>
+  <div class="nav-item" onclick="nav('inventory',this)"><span>🏍️</span> المخزون</div>
+  <div class="nav-item" onclick="nav('chassis',this)"><span>🔍</span> تتبع الشاسيه</div>
+  <div class="nav-item" onclick="nav('transfer',this)"><span>🔄</span> تحويل المخزون</div>
+  <div class="nav-section">المبيعات</div>
+  <div class="nav-item" onclick="nav('sales',this)"><span>🧾</span> المبيعات والفواتير</div>
+  <div class="nav-item" onclick="nav('clients',this)"><span>👥</span> الزبناء</div>
+  <div class="nav-item" onclick="nav('suppliers',this)"><span>🚚</span> الموردين</div>
+  <div class="nav-section">الإدارة</div>
+  <div class="nav-item" onclick="nav('reports',this)"><span>📈</span> التقارير</div>
+  <div class="nav-item" onclick="nav('staff',this)"><span>👤</span> الموظفون</div>
+  <div class="nav-item" onclick="nav('expenses',this)"><span>💸</span> المصاريف</div>
+</div>
+
+<div class="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard">
+  <div class="topbar">
+    <div class="page-title">لوحة القيادة</div>
+    <div class="topbar-right">
+      <span class="badge badge-tanger" id="db-tanger-count">طنجة: —</span>
+      <span class="badge badge-casa" id="db-casa-count">كازا: —</span>
+      <button class="btn btn-sm" onclick="refreshAll()">🔄 تحديث</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">إجمالي المخزون</div><div class="stat-value" id="db-total" style="color:var(--accent)">—</div><div class="stat-sub" id="db-stock-loc">—</div></div>
+      <div class="stat-card"><div class="stat-label">مبيعات هذا الشهر</div><div class="stat-value" id="db-month-sales" style="color:var(--success)">—</div></div>
+      <div class="stat-card"><div class="stat-label">رقم الأعمال</div><div class="stat-value" id="db-revenue">—</div><div class="stat-sub">درهم</div></div>
+      <div class="stat-card"><div class="stat-label">الربح</div><div class="stat-value" id="db-profit" style="color:var(--success)">—</div><div class="stat-sub">درهم</div></div>
+    </div>
+    <div class="two-col">
+      <div class="card"><div class="card-header"><span class="card-title">أفضل الموديلات</span></div><div class="card-body" id="db-best-models">—</div></div>
+      <div class="card"><div class="card-header"><span class="card-title">التنبيهات</span></div><div class="card-body" id="db-alerts">—</div></div>
+    </div>
+    <div class="card"><div class="card-header"><span class="card-title">آخر المبيعات</span></div><div class="table-wrap" id="db-recent-sales">—</div></div>
+  </div>
+</div>
+
+<!-- INVENTORY -->
+<div id="page-inventory" class="hidden">
+  <div class="topbar"><div class="page-title">المخزون</div><div class="topbar-right"><button class="btn btn-primary" onclick="openModal('modal-add-motor')">+ إضافة موتور</button></div></div>
+  <div class="content">
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);max-width:400px">
+      <div class="stat-card"><div class="stat-label">الإجمالي</div><div class="stat-value" id="inv-total" style="color:var(--accent)">—</div></div>
+      <div class="stat-card"><div class="stat-label">طنجة</div><div class="stat-value" id="inv-tanger">—</div></div>
+      <div class="stat-card"><div class="stat-label">كازا</div><div class="stat-value" id="inv-casa">—</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">جميع الموتورات</span>
+        <div class="filter-row">
+          <div class="search-wrap"><span style="padding:0 8px;color:var(--text3)">🔍</span><input type="text" placeholder="بحث..." oninput="filterInventory(this.value)"></div>
+          <select id="inv-loc-filter" class="btn" onchange="filterInventory('')"><option value="">كل المواقع</option><option value="طنجة">طنجة</option><option value="كازا">كازا</option></select>
+          <select id="inv-status-filter" class="btn" onchange="filterInventory('')"><option value="">كل الحالات</option><option value="في المخزون">في المخزون</option><option value="مباع">مباع</option><option value="تحويل">تحويل</option></select>
+        </div>
+      </div>
+      <div class="table-wrap" id="inv-table-wrap"><div class="empty-state">جاري التحميل...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHASSIS -->
+<div id="page-chassis" class="hidden">
+  <div class="topbar"><div class="page-title">تتبع الشاسيه</div></div>
+  <div class="content">
+    <div class="card">
+      <div class="card-header"><span class="card-title">البحث برقم الشاسيه</span></div>
+      <div class="card-body">
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <div class="search-wrap" style="flex:1"><span style="padding:0 8px;color:var(--text3)">🔍</span><input id="chassis-search-input" type="text" placeholder="أدخل رقم الشاسيه..." onkeydown="if(event.key==='Enter')doChassisSearch()"></div>
+          <button class="btn btn-primary" onclick="doChassisSearch()">بحث</button>
+        </div>
+        <div id="chassis-search-result"></div>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><span class="card-title">كل الموتورات</span></div><div class="table-wrap" id="chassis-all-table"><div class="empty-state">جاري التحميل...</div></div></div>
+  </div>
+</div>
+
+<!-- TRANSFER -->
+<div id="page-transfer" class="hidden">
+  <div class="topbar"><div class="page-title">تحويل المخزون</div></div>
+  <div class="content">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">تحويل جديد</span></div>
+        <div class="card-body">
+          <div class="loc-transfer">
+            <div class="loc-box"><div class="loc-name">طنجة</div><div class="loc-count" id="tr-tanger-count">—</div></div>
+            <div style="font-size:22px;color:var(--accent)">⇄</div>
+            <div class="loc-box"><div class="loc-name">كازا</div><div class="loc-count" id="tr-casa-count">—</div></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label>من</label><select id="tr-from"><option value="طنجة">طنجة</option><option value="كازا">كازا</option></select></div>
+            <div class="form-group"><label>إلى</label><select id="tr-to"><option value="كازا">كازا</option><option value="طنجة">طنجة</option></select></div>
+            <div class="form-group form-full"><label>رقم الشاسيه</label><input id="tr-chassis" type="text" placeholder="أدخل رقم الشاسيه..."></div>
+            <div class="form-group"><label>التاريخ</label><input id="tr-date" type="date"></div>
+            <div class="form-group"><label>ملاحظات</label><input id="tr-notes" type="text"></div>
+          </div>
+          <div style="margin-top:16px;display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="doTransfer()">تأكيد التحويل</button></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-header"><span class="card-title">سجل التحويلات</span></div><div class="table-wrap" id="transfer-history-table"><div class="empty-state">جاري التحميل...</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SALES -->
+<div id="page-sales" class="hidden">
+  <div class="topbar"><div class="page-title">المبيعات والفواتير</div><div class="topbar-right"><button class="btn btn-primary" onclick="openModal('modal-new-sale')">+ بيع جديد</button></div></div>
+  <div class="content">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">مبيعات الشهر</div><div class="stat-value" id="sales-count" style="color:var(--accent)">—</div></div>
+      <div class="stat-card"><div class="stat-label">رقم الأعمال</div><div class="stat-value" id="sales-revenue">—</div><div class="stat-sub">درهم</div></div>
+      <div class="stat-card"><div class="stat-label">الربح</div><div class="stat-value" id="sales-profit" style="color:var(--success)">—</div><div class="stat-sub">درهم</div></div>
+      <div class="stat-card"><div class="stat-label">فواتير معلقة</div><div class="stat-value" id="sales-pending" style="color:var(--warning)">—</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">جميع الفواتير</span>
+        <div class="search-wrap"><span style="padding:0 8px;color:var(--text3)">🔍</span><input type="text" placeholder="بحث..." oninput="filterSales(this.value)"></div>
+      </div>
+      <div class="table-wrap" id="sales-table-wrap"><div class="empty-state">جاري التحميل...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENTS -->
+<div id="page-clients" class="hidden">
+  <div class="topbar"><div class="page-title">الزبناء</div><div class="topbar-right"><button class="btn btn-primary" onclick="openModal('modal-add-client')">+ إضافة زبون</button></div></div>
+  <div class="content"><div class="card"><div class="card-header"><span class="card-title">قائمة الزبناء</span><div class="search-wrap"><span style="padding:0 8px;color:var(--text3)">🔍</span><input type="text" placeholder="بحث..." oninput="filterClients(this.value)"></div></div><div class="table-wrap" id="clients-table-wrap"><div class="empty-state">جاري التحميل...</div></div></div></div>
+</div>
+
+<!-- SUPPLIERS -->
+<div id="page-suppliers" class="hidden">
+  <div class="topbar"><div class="page-title">الموردين</div><div class="topbar-right"><button class="btn btn-primary" onclick="openModal('modal-add-supplier')">+ إضافة مورد</button></div></div>
+  <div class="content"><div class="card"><div class="card-header"><span class="card-title">قائمة الموردين</span></div><div class="table-wrap" id="suppliers-table-wrap"><div class="empty-state">جاري التحميل...</div></div></div></div>
+</div>
+
+<!-- REPORTS -->
+<div id="page-reports" class="hidden">
+  <div class="topbar"><div class="page-title">التقارير</div></div>
+  <div class="content">
+    <div class="card"><div class="card-header"><span class="card-title">فلترة التقارير</span></div>
+      <div class="card-body"><div class="filter-row">
+        <select id="rpt-loc" class="btn"><option value="">كل المواقع</option><option value="طنجة">طنجة</option><option value="كازا">كازا</option></select>
+        <input type="month" id="rpt-month" class="btn" style="border:1px solid var(--border)">
+        <button class="btn btn-primary" onclick="generateReport()">إنشاء التقرير</button>
+        <button class="btn" onclick="window.print()">🖨️ طباعة</button>
+      </div></div>
+    </div>
+    <div id="report-output"></div>
+  </div>
+</div>
+
+<!-- STAFF -->
+<div id="page-staff" class="hidden">
+  <div class="topbar"><div class="page-title">الموظفون</div><div class="topbar-right"><button class="btn btn-primary" onclick="openModal('modal-add-staff')">+ إضافة موظف</button></div></div>
+  <div class="content"><div class="card"><div class="card-header"><span class="card-title">فريق العمل</span></div><div class="table-wrap" id="staff-table-wrap"><div class="empty-state">جاري التحميل...</div></div></div></div>
+</div>
+
+<!-- EXPENSES -->
+<div id="page-expenses" class="hidden">
+  <div class="topbar"><div class="page-title">المصاريف</div><div class="topbar-right"><button class="btn btn-primary" onclick="openModal('modal-add-expense')">+ إضافة مصروف</button></div></div>
+  <div class="content">
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);max-width:400px">
+      <div class="stat-card"><div class="stat-label">هذا الشهر</div><div class="stat-value" id="exp-month" style="color:var(--danger)">—</div><div class="stat-sub">درهم</div></div>
+      <div class="stat-card"><div class="stat-label">طنجة</div><div class="stat-value" id="exp-tanger">—</div></div>
+      <div class="stat-card"><div class="stat-label">كازا</div><div class="stat-value" id="exp-casa">—</div></div>
+    </div>
+    <div class="card"><div class="card-header"><span class="card-title">سجل المصاريف</span></div><div class="table-wrap" id="expenses-table-wrap"><div class="empty-state">جاري التحميل...</div></div></div>
+  </div>
+</div>
+
+</div></div>
+
+<!-- MODALS -->
+<div id="modal-add-motor" class="modal-overlay hidden"><div class="modal">
+  <div class="modal-header"><span class="modal-title">إضافة موتور للمخزون</span><button class="close-btn" onclick="closeModal('modal-add-motor')">×</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group form-full"><label>رقم الشاسيه *</label><input id="m-chassis" type="text" placeholder="HND-TNG-2024-0099"></div>
+    <div class="form-group"><label>الموديل *</label><input id="m-model" type="text" placeholder="Honda CB 125"></div>
+    <div class="form-group"><label>السنة</label><input id="m-year" type="number" value="2024"></div>
+    <div class="form-group"><label>اللون</label><input id="m-color" type="text" placeholder="أسود"></div>
+    <div class="form-group"><label>الموقع *</label><select id="m-loc"><option value="طنجة">طنجة</option><option value="كازا">الدار البيضاء</option></select></div>
+    <div class="form-group"><label>تاريخ الدخول</label><input id="m-date" type="date"></div>
+    <div class="form-group"><label>سعر التكلفة (درهم)</label><input id="m-cost" type="number" placeholder="7200"></div>
+    <div class="form-group"><label>سعر البيع (درهم)</label><input id="m-price" type="number" placeholder="9200"></div>
+    <div class="form-group form-full"><label>ملاحظات</label><input id="m-notes" type="text"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-add-motor')">إلغاء</button><button class="btn btn-primary" onclick="saveMotor()">إضافة للمخزون</button></div>
+</div></div>
+
+<div id="modal-new-sale" class="modal-overlay hidden"><div class="modal">
+  <div class="modal-header"><span class="modal-title">بيع جديد</span><button class="close-btn" onclick="closeModal('modal-new-sale')">×</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label>اسم الزبون *</label><input id="s-client" type="text" list="clients-datalist"></div>
+    <div class="form-group"><label>الهاتف</label><input id="s-phone" type="text"></div>
+    <div class="form-group form-full"><label>رقم الشاسيه *</label><input id="s-chassis" type="text" oninput="autofillSale(this.value)"></div>
+    <div class="form-group"><label>الموديل</label><input id="s-model" type="text"></div>
+    <div class="form-group"><label>الموقع</label><select id="s-loc"><option value="طنجة">طنجة</option><option value="كازا">كازا</option></select></div>
+    <div class="form-group"><label>البائع *</label><select id="s-seller"></select></div>
+    <div class="form-group"><label>سعر البيع (درهم) *</label><input id="s-price" type="number"></div>
+    <div class="form-group"><label>سعر التكلفة (درهم)</label><input id="s-cost" type="number"></div>
+    <div class="form-group"><label>التاريخ</label><input id="s-date" type="date"></div>
+    <div class="form-group"><label>الحالة</label><select id="s-status"><option value="مدفوع">مدفوع</option><option value="معلق">معلق</option></select></div>
+    <div class="form-group form-full"><label>ملاحظات</label><input id="s-notes" type="text"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-new-sale')">إلغاء</button><button class="btn btn-primary" onclick="saveSale()">تأكيد البيع</button></div>
+</div></div>
+
+<div id="modal-add-client" class="modal-overlay hidden"><div class="modal">
+  <div class="modal-header"><span class="modal-title">إضافة زبون</span><button class="close-btn" onclick="closeModal('modal-add-client')">×</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label>الاسم *</label><input id="c-name" type="text"></div>
+    <div class="form-group"><label>الهاتف</label><input id="c-phone" type="text"></div>
+    <div class="form-group"><label>المدينة</label><input id="c-city" type="text"></div>
+    <div class="form-group"><label>CIN</label><input id="c-cin" type="text"></div>
+    <div class="form-group form-full"><label>ملاحظات</label><input id="c-notes" type="text"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-add-client')">إلغاء</button><button class="btn btn-primary" onclick="saveClient()">إضافة</button></div>
+</div></div>
+
+<div id="modal-add-supplier" class="modal-overlay hidden"><div class="modal">
+  <div class="modal-header"><span class="modal-title">إضافة مورد</span><button class="close-btn" onclick="closeModal('modal-add-supplier')">×</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label>الاسم *</label><input id="sup-name" type="text"></div>
+    <div class="form-group"><label>الهاتف</label><input id="sup-phone" type="text"></div>
+    <div class="form-group form-full"><label>الموديلات</label><input id="sup-models" type="text"></div>
+    <div class="form-group"><label>المدينة</label><input id="sup-city" type="text"></div>
+    <div class="form-group"><label>ملاحظات</label><input id="sup-notes" type="text"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-add-supplier')">إلغاء</button><button class="btn btn-primary" onclick="saveSupplier()">إضافة</button></div>
+</div></div>
+
+<div id="modal-add-staff" class="modal-overlay hidden"><div class="modal">
+  <div class="modal-header"><span class="modal-title">إضافة موظف</span><button class="close-btn" onclick="closeModal('modal-add-staff')">×</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label>الاسم *</label><input id="st-name" type="text"></div>
+    <div class="form-group"><label>الدور</label><select id="st-role"><option>بائع</option><option>مدير</option><option>محاسب</option><option>مسؤول مخزون</option></select></div>
+    <div class="form-group"><label>الموقع</label><select id="st-loc"><option value="طنجة">طنجة</option><option value="كازا">كازا</option><option value="كلاهما">كلاهما</option></select></div>
+    <div class="form-group"><label>الهاتف</label><input id="st-phone" type="text"></div>
+    <div class="form-group"><label>الراتب (درهم)</label><input id="st-salary" type="number"></div>
+    <div class="form-group"><label>الصلاحيات</label><select id="st-perm"><option>عادي</option><option>مدير</option><option>وصول كامل</option></select></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-add-staff')">إلغاء</button><button class="btn btn-primary" onclick="saveStaff()">إضافة</button></div>
+</div></div>
+
+<div id="modal-add-expense" class="modal-overlay hidden"><div class="modal">
+  <div class="modal-header"><span class="modal-title">إضافة مصروف</span><button class="close-btn" onclick="closeModal('modal-add-expense')">×</button></div>
+  <div class="modal-body"><div class="form-grid">
+    <div class="form-group"><label>الوصف *</label><input id="e-desc" type="text"></div>
+    <div class="form-group"><label>المبلغ (درهم) *</label><input id="e-amount" type="number"></div>
+    <div class="form-group"><label>الفئة</label><select id="e-cat"><option>إيجار</option><option>رواتب</option><option>صيانة</option><option>نقل</option><option>أخرى</option></select></div>
+    <div class="form-group"><label>الموقع</label><select id="e-loc"><option value="طنجة">طنجة</option><option value="كازا">كازا</option></select></div>
+    <div class="form-group"><label>التاريخ</label><input id="e-date" type="date"></div>
+    <div class="form-group"><label>ملاحظات</label><input id="e-notes" type="text"></div>
+  </div></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-add-expense')">إلغاء</button><button class="btn btn-primary" onclick="saveExpense()">حفظ</button></div>
+</div></div>
+
+<div id="modal-chassis-detail" class="modal-overlay hidden"><div class="modal" style="max-width:480px">
+  <div class="modal-header"><span class="modal-title">تفاصيل الشاسيه</span><button class="close-btn" onclick="closeModal('modal-chassis-detail')">×</button></div>
+  <div class="modal-body" id="chassis-detail-body"></div>
+  <div class="modal-footer"><button class="btn" onclick="closeModal('modal-chassis-detail')">إغلاق</button></div>
+</div></div>
+
+<datalist id="clients-datalist"></datalist>
+<div id="toast" class="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURATION — ضع مفاتيحك هنا
+// ============================================================
+const SUPABASE_URL = 'https://snzgzcvvpzatoqvmonqp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_iqzuyGhC82XbATtVifB3Tg_rHII4hwL';
+// ============================================================
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Cache
+let MOTORS=[], SALES=[], CLIENTS=[], SUPPLIERS=[], STAFF=[], EXPENSES=[], TRANSFERS=[];
+
+// ===== UTILS =====
+function uid(){ return '_'+Math.random().toString(36).substr(2,9); }
+function fmt(n){ return Number(n||0).toLocaleString('ar-MA'); }
+function today(){ return new Date().toISOString().split('T')[0]; }
+function thisMonth(){ return new Date().toISOString().slice(0,7); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+function statusBadge(s){ const m={'مباع':'s-sold','في المخزون':'s-stock','تحويل':'s-transfer','مدفوع':'s-sold','معلق':'s-pending'}; return `<span class="status ${m[s]||'s-stock'}">${s}</span>`; }
+function locBadge(l){ return l==='طنجة'?`<span class="badge badge-tanger">طنجة</span>`:l==='كازا'?`<span class="badge badge-casa">كازا</span>`:`<span class="badge badge-both">${l}</span>`; }
+function setSyncing(){ const d=document.getElementById('sync-dot'),t=document.getElementById('sync-text'); d.className='sync-dot syncing'; t.textContent='جاري الحفظ...'; }
+function setOnline(){ const d=document.getElementById('sync-dot'),t=document.getElementById('sync-text'); d.className='sync-dot'; t.textContent='متصل ✓'; }
+function setOffline(){ const d=document.getElementById('sync-dot'),t=document.getElementById('sync-text'); d.className='sync-dot offline'; t.textContent='غير متصل'; }
+
+// ===== SUPABASE LOAD =====
+async function loadAll(){
+  try {
+    const [m,s,c,sup,st,e,tr] = await Promise.all([
+      sb.from('motors').select('*').order('created_at',{ascending:false}),
+      sb.from('sales').select('*').order('created_at',{ascending:false}),
+      sb.from('clients').select('*').order('created_at',{ascending:false}),
+      sb.from('suppliers').select('*').order('created_at',{ascending:false}),
+      sb.from('staff').select('*').order('created_at',{ascending:false}),
+      sb.from('expenses').select('*').order('created_at',{ascending:false}),
+      sb.from('transfers').select('*').order('created_at',{ascending:false}),
+    ]);
+    MOTORS   = (m.data||[]).map(r=>({id:r.id,chassis:r.chassis,model:r.model,year:r.year,color:r.color,location:r.location,dateIn:r.date_in,costPrice:r.cost_price,salePrice:r.sale_price,status:r.status,notes:r.notes}));
+    SALES    = (s.data||[]).map(r=>({id:r.id,invoiceNo:r.invoice_no,date:r.date,clientName:r.client_name,phone:r.phone,chassis:r.chassis,model:r.model,location:r.location,seller:r.seller,salePrice:r.sale_price,costPrice:r.cost_price,status:r.status,notes:r.notes}));
+    CLIENTS  = (c.data||[]).map(r=>({id:r.id,name:r.name,phone:r.phone,city:r.city,cin:r.cin,notes:r.notes}));
+    SUPPLIERS= (sup.data||[]).map(r=>({id:r.id,name:r.name,phone:r.phone,models:r.models,city:r.city,notes:r.notes}));
+    STAFF    = (st.data||[]).map(r=>({id:r.id,name:r.name,role:r.role,location:r.location,phone:r.phone,salary:r.salary,permissions:r.permissions}));
+    EXPENSES = (e.data||[]).map(r=>({id:r.id,desc:r.description,amount:r.amount,category:r.category,location:r.location,date:r.date,notes:r.notes}));
+    TRANSFERS= (tr.data||[]).map(r=>({id:r.id,chassis:r.chassis,from:r.from_location,to:r.to_location,date:r.date,notes:r.notes}));
+    setOnline();
+    return true;
+  } catch(err){ setOffline(); return false; }
+}
+
+async function refreshAll(){ await loadAll(); renderCurrentPage(); toast('✅ تم التحديث'); }
+
+// ===== NAV =====
+let currentPage = 'dashboard';
+function nav(page,el){
+  currentPage=page;
+  document.querySelectorAll('[id^=page-]').forEach(p=>p.classList.add('hidden'));
+  document.getElementById('page-'+page).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderCurrentPage();
+}
+function renderCurrentPage(){
+  const r={dashboard:renderDashboard,inventory:renderInventory,chassis:renderChassisAll,transfer:renderTransfer,sales:renderSales,clients:renderClients,suppliers:renderSuppliers,staff:renderStaff,expenses:renderExpenses,reports:()=>{}};
+  if(r[currentPage]) r[currentPage]();
+}
+
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+document.addEventListener('click',e=>{ if(e.target.classList.contains('modal-overlay')) e.target.classList.add('hidden'); });
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  const inStock=MOTORS.filter(m=>m.status==='في المخزون');
+  const tanger=inStock.filter(m=>m.location==='طنجة').length;
+  const casa=inStock.filter(m=>m.location==='كازا').length;
+  document.getElementById('db-total').textContent=inStock.length;
+  document.getElementById('db-stock-loc').textContent=`طنجة ${tanger} · كازا ${casa}`;
+  document.getElementById('db-tanger-count').textContent=`طنجة: ${tanger}`;
+  document.getElementById('db-casa-count').textContent=`كازا: ${casa}`;
+  const m=thisMonth();
+  const ms=SALES.filter(s=>s.date&&s.date.startsWith(m));
+  document.getElementById('db-month-sales').textContent=ms.length;
+  document.getElementById('db-revenue').textContent=fmt(ms.reduce((a,s)=>a+(+s.salePrice||0),0));
+  document.getElementById('db-profit').textContent=fmt(ms.reduce((a,s)=>a+(+s.salePrice||0)-(+s.costPrice||0),0));
+  const mm={};SALES.forEach(s=>{if(s.model) mm[s.model]=(mm[s.model]||0)+1;});
+  const sorted=Object.entries(mm).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxV=sorted[0]?sorted[0][1]:1;
+  document.getElementById('db-best-models').innerHTML=sorted.length?sorted.map(([m,c])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:500;margin-bottom:4px"><span>${m}</span><span style="color:var(--text3)">${c}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${Math.round(c/maxV*100)}%"></div></div></div>`).join(''):'<div style="color:var(--text3);font-size:13px">لا مبيعات بعد</div>';
+  const low=inStock.filter(m=>inStock.filter(x=>x.model===m.model&&x.location===m.location).length<=2);
+  const uLow=[...new Set(low.map(m=>m.model+'_'+m.location))].map(k=>{const[mod,loc]=k.split('_');return{model:mod,location:loc};});
+  const pend=SALES.filter(s=>s.status==='معلق');
+  const alerts=[...uLow.map(l=>`<div class="alert-row"><div class="alert-icon" style="background:var(--danger-bg)">⚠️</div><div><div style="font-size:13px;font-weight:500">مخزون منخفض — ${l.model} (${l.location})</div></div></div>`),...pend.slice(0,2).map(s=>`<div class="alert-row"><div class="alert-icon" style="background:var(--warning-bg)">🧾</div><div><div style="font-size:13px;font-weight:500">فاتورة معلقة ${s.invoiceNo}</div><div style="font-size:12px;color:var(--text3)">${s.clientName}</div></div></div>`)];
+  document.getElementById('db-alerts').innerHTML=alerts.length?alerts.join(''):'<div style="color:var(--text3);font-size:13px">✅ لا توجد تنبيهات</div>';
+  const recent=SALES.slice(0,5);
+  document.getElementById('db-recent-sales').innerHTML=recent.length?`<table><thead><tr><th>الفاتورة</th><th>الزبون</th><th>الموديل</th><th>الموقع</th><th>البائع</th><th>المبلغ</th><th>الحالة</th></tr></thead><tbody>${recent.map(s=>`<tr><td>${s.invoiceNo}</td><td>${s.clientName}</td><td>${s.model}</td><td>${locBadge(s.location)}</td><td>${s.seller}</td><td>${fmt(s.salePrice)} د</td><td>${statusBadge(s.status)}</td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">لا توجد مبيعات بعد</div>';
+}
+
+// ===== INVENTORY =====
+let _invSearch='',_invLoc='',_invStatus='';
+function filterInventory(search){ _invSearch=search||''; _invLoc=document.getElementById('inv-loc-filter').value; _invStatus=document.getElementById('inv-status-filter').value; renderInventory(); }
+function renderInventory(){
+  let motors=[...MOTORS];
+  if(_invSearch) motors=motors.filter(m=>m.chassis.toLowerCase().includes(_invSearch.toLowerCase())||m.model.toLowerCase().includes(_invSearch.toLowerCase()));
+  if(_invLoc) motors=motors.filter(m=>m.location===_invLoc);
+  if(_invStatus) motors=motors.filter(m=>m.status===_invStatus);
+  const inStock=MOTORS.filter(m=>m.status==='في المخزون');
+  document.getElementById('inv-total').textContent=inStock.length;
+  document.getElementById('inv-tanger').textContent=inStock.filter(m=>m.location==='طنجة').length;
+  document.getElementById('inv-casa').textContent=inStock.filter(m=>m.location==='كازا').length;
+  document.getElementById('inv-table-wrap').innerHTML=motors.length?`<table><thead><tr><th>الشاسيه</th><th>الموديل</th><th>السنة</th><th>اللون</th><th>الموقع</th><th>التكلفة</th><th>سعر البيع</th><th>الحالة</th><th></th></tr></thead><tbody>${motors.map(m=>`<tr><td style="font-family:monospace;font-size:11px">${m.chassis}</td><td>${m.model}</td><td>${m.year||'—'}</td><td>${m.color||'—'}</td><td>${locBadge(m.location)}</td><td>${fmt(m.costPrice)}</td><td>${fmt(m.salePrice)}</td><td>${statusBadge(m.status)}</td><td style="white-space:nowrap"><button class="btn btn-sm" onclick="viewChassisDetail('${m.chassis}')">👁</button> <button class="btn btn-sm btn-danger" onclick="deleteMotor('${m.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">لا توجد موتورات</div>';
+}
+
+async function saveMotor(){
+  const chassis=document.getElementById('m-chassis').value.trim();
+  const model=document.getElementById('m-model').value.trim();
+  if(!chassis||!model){toast('❌ الشاسيه والموديل مطلوبان');return;}
+  if(MOTORS.find(m=>m.chassis===chassis)){toast('❌ رقم الشاسيه موجود مسبقاً');return;}
+  setSyncing();
+  const {error}=await sb.from('motors').insert({id:uid(),chassis,model,year:document.getElementById('m-year').value,color:document.getElementById('m-color').value,location:document.getElementById('m-loc').value,date_in:document.getElementById('m-date').value||today(),cost_price:+document.getElementById('m-cost').value||0,sale_price:+document.getElementById('m-price').value||0,status:'في المخزون',notes:document.getElementById('m-notes').value});
+  if(error){setOffline();toast('❌ خطأ: '+error.message);return;}
+  await loadAll();closeModal('modal-add-motor');renderInventory();renderDashboard();toast('✅ تمت إضافة الموتور');
+  ['m-chassis','m-model','m-color','m-cost','m-price','m-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function deleteMotor(id){
+  if(!confirm('حذف هذا الموتور؟'))return;
+  setSyncing();
+  await sb.from('motors').delete().eq('id',id);
+  await loadAll();renderInventory();renderDashboard();toast('🗑 تم الحذف');
+}
+
+// ===== CHASSIS =====
+function viewChassisDetail(chassis){
+  const motor=MOTORS.find(m=>m.chassis===chassis);if(!motor)return;
+  const sale=SALES.find(s=>s.chassis===chassis);
+  const profit=sale?(+sale.salePrice||0)-(+sale.costPrice||0):null;
+  document.getElementById('chassis-detail-body').innerHTML=`<div style="margin-bottom:12px">${statusBadge(motor.status)}</div><div style="font-family:monospace;font-size:14px;font-weight:700;color:var(--accent);margin-bottom:14px">${chassis}</div><div class="chassis-detail"><div class="chassis-row"><span class="chassis-label">الموديل</span><span class="chassis-val">${motor.model}</span></div><div class="chassis-row"><span class="chassis-label">السنة</span><span class="chassis-val">${motor.year||'—'}</span></div><div class="chassis-row"><span class="chassis-label">اللون</span><span class="chassis-val">${motor.color||'—'}</span></div><div class="chassis-row"><span class="chassis-label">الموقع</span><span class="chassis-val">${locBadge(motor.location)}</span></div><div class="chassis-row"><span class="chassis-label">تاريخ الدخول</span><span class="chassis-val">${motor.dateIn||'—'}</span></div><div class="chassis-row"><span class="chassis-label">سعر التكلفة</span><span class="chassis-val">${fmt(motor.costPrice)} درهم</span></div><div class="chassis-row"><span class="chassis-label">سعر البيع</span><span class="chassis-val">${fmt(motor.salePrice)} درهم</span></div>${sale?`<div class="chassis-row"><span class="chassis-label">بيع إلى</span><span class="chassis-val">${sale.clientName}</span></div><div class="chassis-row"><span class="chassis-label">باع بواسطة</span><span class="chassis-val">${sale.seller}</span></div><div class="chassis-row"><span class="chassis-label">تاريخ البيع</span><span class="chassis-val">${sale.date||'—'}</span></div><div class="chassis-row"><span class="chassis-label">الربح</span><span class="chassis-val" style="color:var(--success);font-weight:600">${fmt(profit)} درهم</span></div>`:''}</div>`;
+  openModal('modal-chassis-detail');
+}
+function doChassisSearch(){
+  const val=document.getElementById('chassis-search-input').value.trim();
+  const motor=MOTORS.find(m=>m.chassis.toLowerCase()===val.toLowerCase());
+  if(motor){viewChassisDetail(motor.chassis);document.getElementById('chassis-search-result').innerHTML='<div style="color:var(--success);font-size:13px;margin-top:8px">✅ تم العثور عليه</div>';}
+  else document.getElementById('chassis-search-result').innerHTML='<div style="color:var(--danger);font-size:13px;margin-top:8px">❌ لم يُعثر على الشاسيه</div>';
+}
+function renderChassisAll(){
+  document.getElementById('chassis-all-table').innerHTML=MOTORS.length?`<table><thead><tr><th>الشاسيه</th><th>الموديل</th><th>تاريخ الدخول</th><th>الموقع</th><th>الحالة</th><th>بيع إلى</th><th>بواسطة</th><th></th></tr></thead><tbody>${MOTORS.map(m=>{const sale=SALES.find(s=>s.chassis===m.chassis);return`<tr><td style="font-family:monospace;font-size:11px">${m.chassis}</td><td>${m.model}</td><td>${m.dateIn||'—'}</td><td>${locBadge(m.location)}</td><td>${statusBadge(m.status)}</td><td>${sale?sale.clientName:'—'}</td><td>${sale?sale.seller:'—'}</td><td><button class="btn btn-sm" onclick="viewChassisDetail('${m.chassis}')">👁</button></td></tr>`;}).join('')}</tbody></table>`:'<div class="empty-state">لا توجد بيانات</div>';
+}
+
+// ===== TRANSFER =====
+function renderTransfer(){
+  const inStock=MOTORS.filter(m=>m.status==='في المخزون');
+  document.getElementById('tr-tanger-count').textContent=inStock.filter(m=>m.location==='طنجة').length;
+  document.getElementById('tr-casa-count').textContent=inStock.filter(m=>m.location==='كازا').length;
+  document.getElementById('tr-date').value=today();
+  document.getElementById('transfer-history-table').innerHTML=TRANSFERS.length?`<table><thead><tr><th>التاريخ</th><th>الشاسيه</th><th>من</th><th>إلى</th><th>ملاحظات</th></tr></thead><tbody>${TRANSFERS.map(t=>`<tr><td>${t.date}</td><td style="font-family:monospace;font-size:11px">${t.chassis}</td><td>${locBadge(t.from)}</td><td>${locBadge(t.to)}</td><td>${t.notes||'—'}</td></tr>`).join('')}</tbody></table>`:'<div class="empty-state" style="padding:20px">لا توجد تحويلات</div>';
+}
+async function doTransfer(){
+  const chassis=document.getElementById('tr-chassis').value.trim();
+  const from=document.getElementById('tr-from').value;
+  const to=document.getElementById('tr-to').value;
+  if(!chassis){toast('❌ أدخل رقم الشاسيه');return;}
+  if(from===to){toast('❌ الموقعان متطابقان');return;}
+  const motor=MOTORS.find(m=>m.chassis===chassis);
+  if(!motor){toast('❌ الشاسيه غير موجود');return;}
+  if(motor.status==='مباع'){toast('❌ هذا الموتور مباع');return;}
+  setSyncing();
+  await sb.from('motors').update({location:to,status:'في المخزون'}).eq('chassis',chassis);
+  await sb.from('transfers').insert({id:uid(),chassis,from_location:from,to_location:to,date:document.getElementById('tr-date').value||today(),notes:document.getElementById('tr-notes').value});
+  await loadAll();renderTransfer();toast('✅ تم التحويل بنجاح');
+  document.getElementById('tr-chassis').value='';document.getElementById('tr-notes').value='';
+}
+
+// ===== SALES =====
+let _salesSearch='';
+function filterSales(s){ _salesSearch=s; renderSales(); }
+function renderSales(){
+  let sales=[...SALES];
+  if(_salesSearch) sales=sales.filter(s=>(s.clientName+s.model+s.chassis+s.invoiceNo+s.seller).toLowerCase().includes(_salesSearch.toLowerCase()));
+  const m=thisMonth();const ms=SALES.filter(s=>s.date&&s.date.startsWith(m));
+  document.getElementById('sales-count').textContent=ms.length;
+  document.getElementById('sales-revenue').textContent=fmt(ms.reduce((a,s)=>a+(+s.salePrice||0),0));
+  document.getElementById('sales-profit').textContent=fmt(ms.reduce((a,s)=>a+(+s.salePrice||0)-(+s.costPrice||0),0));
+  document.getElementById('sales-pending').textContent=SALES.filter(s=>s.status==='معلق').length;
+  document.getElementById('sales-table-wrap').innerHTML=sales.length?`<table><thead><tr><th>الفاتورة</th><th>التاريخ</th><th>الزبون</th><th>الموديل</th><th>الشاسيه</th><th>الموقع</th><th>البائع</th><th>المبلغ</th><th>الربح</th><th>الحالة</th><th></th></tr></thead><tbody>${sales.map(s=>`<tr><td>${s.invoiceNo}</td><td>${s.date||'—'}</td><td>${s.clientName}</td><td>${s.model}</td><td style="font-family:monospace;font-size:11px">${s.chassis}</td><td>${locBadge(s.location)}</td><td>${s.seller}</td><td>${fmt(s.salePrice)} د</td><td style="color:var(--success)">${fmt((+s.salePrice||0)-(+s.costPrice||0))} د</td><td>${statusBadge(s.status)}</td><td><button class="btn btn-sm btn-danger" onclick="deleteSale('${s.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">لا توجد مبيعات</div>';
+}
+function autofillSale(v){
+  const m=MOTORS.find(x=>x.chassis===v);
+  if(m){document.getElementById('s-model').value=m.model;document.getElementById('s-loc').value=m.location;document.getElementById('s-price').value=m.salePrice||'';document.getElementById('s-cost').value=m.costPrice||'';}
+}
+async function saveSale(){
+  const clientName=document.getElementById('s-client').value.trim();
+  const chassis=document.getElementById('s-chassis').value.trim();
+  const seller=document.getElementById('s-seller').value;
+  const salePrice=+document.getElementById('s-price').value;
+  if(!clientName||!chassis||!seller||!salePrice){toast('❌ أكمل الحقول المطلوبة');return;}
+  const motor=MOTORS.find(m=>m.chassis===chassis);
+  if(!motor){toast('❌ الشاسيه غير موجود');return;}
+  if(motor.status==='مباع'){toast('❌ هذا الموتور مباع مسبقاً');return;}
+  setSyncing();
+  const invoiceNo='#'+(1000+SALES.length+1);
+  await sb.from('sales').insert({id:uid(),invoice_no:invoiceNo,date:document.getElementById('s-date').value||today(),client_name:clientName,phone:document.getElementById('s-phone').value,chassis,model:document.getElementById('s-model').value||motor.model,location:document.getElementById('s-loc').value||motor.location,seller,sale_price:salePrice,cost_price:+document.getElementById('s-cost').value||motor.costPrice||0,status:document.getElementById('s-status').value,notes:document.getElementById('s-notes').value});
+  await sb.from('motors').update({status:'مباع'}).eq('chassis',chassis);
+  if(!CLIENTS.find(c=>c.name===clientName)) await sb.from('clients').insert({id:uid(),name:clientName,phone:document.getElementById('s-phone').value,city:'',cin:'',notes:''});
+  await loadAll();closeModal('modal-new-sale');renderSales();renderDashboard();toast('✅ تم تسجيل البيع — '+invoiceNo);
+  ['s-client','s-phone','s-chassis','s-model','s-price','s-cost','s-notes'].forEach(id=>document.getElementById(id).value='');
+}
+async function deleteSale(id){
+  const sale=SALES.find(s=>s.id===id);
+  if(!confirm('حذف هذه الفاتورة؟'))return;
+  setSyncing();
+  if(sale) await sb.from('motors').update({status:'في المخزون'}).eq('chassis',sale.chassis);
+  await sb.from('sales').delete().eq('id',id);
+  await loadAll();renderSales();renderDashboard();toast('🗑 تم الحذف');
+}
+
+// ===== CLIENTS =====
+let _clientSearch='';
+function filterClients(s){ _clientSearch=s; renderClients(); }
+function renderClients(){
+  let clients=[...CLIENTS];
+  if(_clientSearch) clients=clients.filter(c=>(c.name+c.phone+c.city).toLowerCase().includes(_clientSearch.toLowerCase()));
+  document.getElementById('clients-table-wrap').innerHTML=clients.length?`<table><thead><tr><th>الاسم</th><th>الهاتف</th><th>المدينة</th><th>CIN</th><th>المشتريات</th><th>الإجمالي</th><th></th></tr></thead><tbody>${clients.map(c=>{const cs=SALES.filter(s=>s.clientName===c.name);const tot=cs.reduce((a,s)=>a+(+s.salePrice||0),0);return`<tr><td>${c.name}</td><td>${c.phone||'—'}</td><td>${c.city||'—'}</td><td>${c.cin||'—'}</td><td>${cs.length}</td><td>${fmt(tot)} د</td><td><button class="btn btn-sm btn-danger" onclick="deleteClient('${c.id}')">🗑</button></td></tr>`;}).join('')}</tbody></table>`:'<div class="empty-state">لا يوجد زبناء</div>';
+  document.getElementById('clients-datalist').innerHTML=CLIENTS.map(c=>`<option value="${c.name}">`).join('');
+}
+async function saveClient(){
+  const name=document.getElementById('c-name').value.trim();
+  if(!name){toast('❌ الاسم مطلوب');return;}
+  setSyncing();
+  await sb.from('clients').insert({id:uid(),name,phone:document.getElementById('c-phone').value,city:document.getElementById('c-city').value,cin:document.getElementById('c-cin').value,notes:document.getElementById('c-notes').value});
+  await loadAll();closeModal('modal-add-client');renderClients();toast('✅ تمت إضافة الزبون');
+  ['c-name','c-phone','c-city','c-cin','c-notes'].forEach(id=>document.getElementById(id).value='');
+}
+async function deleteClient(id){ if(!confirm('حذف هذا الزبون؟'))return; setSyncing(); await sb.from('clients').delete().eq('id',id); await loadAll();renderClients();toast('🗑 تم الحذف'); }
+
+// ===== SUPPLIERS =====
+function renderSuppliers(){
+  document.getElementById('suppliers-table-wrap').innerHTML=SUPPLIERS.length?`<table><thead><tr><th>المورد</th><th>الهاتف</th><th>الموديلات</th><th>المدينة</th><th></th></tr></thead><tbody>${SUPPLIERS.map(s=>`<tr><td>${s.name}</td><td>${s.phone||'—'}</td><td>${s.models||'—'}</td><td>${s.city||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="deleteSupplier('${s.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">لا يوجد موردون</div>';
+}
+async function saveSupplier(){
+  const name=document.getElementById('sup-name').value.trim();
+  if(!name){toast('❌ الاسم مطلوب');return;}
+  setSyncing();
+  await sb.from('suppliers').insert({id:uid(),name,phone:document.getElementById('sup-phone').value,models:document.getElementById('sup-models').value,city:document.getElementById('sup-city').value,notes:document.getElementById('sup-notes').value});
+  await loadAll();closeModal('modal-add-supplier');renderSuppliers();toast('✅ تمت إضافة المورد');
+}
+async function deleteSupplier(id){ if(!confirm('حذف هذا المورد؟'))return; setSyncing(); await sb.from('suppliers').delete().eq('id',id); await loadAll();renderSuppliers();toast('🗑 تم الحذف'); }
+
+// ===== STAFF =====
+function renderStaff(){
+  document.getElementById('staff-table-wrap').innerHTML=STAFF.length?`<table><thead><tr><th>الاسم</th><th>الدور</th><th>الموقع</th><th>الهاتف</th><th>الراتب</th><th>مبيعات الشهر</th><th>الصلاحيات</th><th></th></tr></thead><tbody>${STAFF.map(s=>{const m=thisMonth();const ss=SALES.filter(x=>x.seller===s.name&&x.date&&x.date.startsWith(m));return`<tr><td>${s.name}</td><td>${s.role}</td><td>${locBadge(s.location)}</td><td>${s.phone||'—'}</td><td>${s.salary?fmt(s.salary)+' د':'—'}</td><td>${ss.length} / ${fmt(ss.reduce((a,x)=>a+(+x.salePrice||0),0))} د</td><td><span class="status s-stock">${s.permissions}</span></td><td><button class="btn btn-sm btn-danger" onclick="deleteStaff('${s.id}')">🗑</button></td></tr>`;}).join('')}</tbody></table>`:'<div class="empty-state">لا يوجد موظفون</div>';
+  document.getElementById('s-seller').innerHTML=STAFF.map(s=>`<option value="${s.name}">${s.name}</option>`).join('');
+}
+async function saveStaff(){
+  const name=document.getElementById('st-name').value.trim();
+  if(!name){toast('❌ الاسم مطلوب');return;}
+  setSyncing();
+  await sb.from('staff').insert({id:uid(),name,role:document.getElementById('st-role').value,location:document.getElementById('st-loc').value,phone:document.getElementById('st-phone').value,salary:+document.getElementById('st-salary').value||0,permissions:document.getElementById('st-perm').value});
+  await loadAll();closeModal('modal-add-staff');renderStaff();toast('✅ تمت إضافة الموظف');
+  document.getElementById('st-name').value='';document.getElementById('st-phone').value='';document.getElementById('st-salary').value='';
+}
+async function deleteStaff(id){ if(!confirm('حذف هذا الموظف؟'))return; setSyncing(); await sb.from('staff').delete().eq('id',id); await loadAll();renderStaff();toast('🗑 تم الحذف'); }
+
+// ===== EXPENSES =====
+function renderExpenses(){
+  const m=thisMonth();const me=EXPENSES.filter(e=>e.date&&e.date.startsWith(m));
+  document.getElementById('exp-month').textContent=fmt(me.reduce((a,e)=>a+(+e.amount||0),0));
+  document.getElementById('exp-tanger').textContent=fmt(me.filter(e=>e.location==='طنجة').reduce((a,e)=>a+(+e.amount||0),0));
+  document.getElementById('exp-casa').textContent=fmt(me.filter(e=>e.location==='كازا').reduce((a,e)=>a+(+e.amount||0),0));
+  document.getElementById('expenses-table-wrap').innerHTML=EXPENSES.length?`<table><thead><tr><th>الوصف</th><th>المبلغ</th><th>الفئة</th><th>الموقع</th><th>التاريخ</th><th></th></tr></thead><tbody>${EXPENSES.map(e=>`<tr><td>${e.desc}</td><td style="color:var(--danger)">${fmt(e.amount)} د</td><td>${e.category}</td><td>${locBadge(e.location)}</td><td>${e.date||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="deleteExpense('${e.id}')">🗑</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty-state">لا توجد مصاريف</div>';
+}
+async function saveExpense(){
+  const desc=document.getElementById('e-desc').value.trim();const amount=+document.getElementById('e-amount').value;
+  if(!desc||!amount){toast('❌ الوصف والمبلغ مطلوبان');return;}
+  setSyncing();
+  await sb.from('expenses').insert({id:uid(),description:desc,amount,category:document.getElementById('e-cat').value,location:document.getElementById('e-loc').value,date:document.getElementById('e-date').value||today(),notes:document.getElementById('e-notes').value});
+  await loadAll();closeModal('modal-add-expense');renderExpenses();toast('✅ تمت إضافة المصروف');
+  document.getElementById('e-desc').value='';document.getElementById('e-amount').value='';document.getElementById('e-notes').value='';
+}
+async function deleteExpense(id){ if(!confirm('حذف هذا المصروف؟'))return; setSyncing(); await sb.from('expenses').delete().eq('id',id); await loadAll();renderExpenses();toast('🗑 تم الحذف'); }
+
+// ===== REPORTS =====
+function generateReport(){
+  const loc=document.getElementById('rpt-loc').value;
+  const month=document.getElementById('rpt-month').value||thisMonth();
+  let sales=SALES.filter(s=>s.date&&s.date.startsWith(month));
+  let expenses=EXPENSES.filter(e=>e.date&&e.date.startsWith(month));
+  if(loc){sales=sales.filter(s=>s.location===loc);expenses=expenses.filter(e=>e.location===loc);}
+  const revenue=sales.reduce((a,s)=>a+(+s.salePrice||0),0);
+  const cogs=sales.reduce((a,s)=>a+(+s.costPrice||0),0);
+  const grossProfit=revenue-cogs;
+  const totalExp=expenses.reduce((a,e)=>a+(+e.amount||0),0);
+  const netProfit=grossProfit-totalExp;
+  const mm={};sales.forEach(s=>{if(!mm[s.model])mm[s.model]={count:0,profit:0};mm[s.model].count++;mm[s.model].profit+=(+s.salePrice||0)-(+s.costPrice||0);});
+  const sm={};sales.forEach(s=>{if(!sm[s.seller])sm[s.seller]={count:0,revenue:0};sm[s.seller].count++;sm[s.seller].revenue+=(+s.salePrice||0);});
+  document.getElementById('report-output').innerHTML=`<div class="card"><div class="card-header"><span class="card-title">📊 تقرير ${month} ${loc?'— '+loc:'— كل المواقع'}</span></div><div class="card-body"><div class="stats-grid"><div class="stat-card"><div class="stat-label">عدد المبيعات</div><div class="stat-value" style="color:var(--accent)">${sales.length}</div></div><div class="stat-card"><div class="stat-label">رقم الأعمال</div><div class="stat-value">${fmt(revenue)}</div><div class="stat-sub">درهم</div></div><div class="stat-card"><div class="stat-label">الربح الإجمالي</div><div class="stat-value" style="color:var(--success)">${fmt(grossProfit)}</div><div class="stat-sub">درهم</div></div><div class="stat-card"><div class="stat-label">المصاريف</div><div class="stat-value" style="color:var(--danger)">${fmt(totalExp)}</div><div class="stat-sub">درهم</div></div><div class="stat-card"><div class="stat-label">صافي الربح</div><div class="stat-value" style="color:${netProfit>=0?'var(--success)':'var(--danger)'}">${fmt(netProfit)}</div><div class="stat-sub">درهم</div></div></div><div class="two-col" style="margin-top:16px"><div><div style="font-weight:600;margin-bottom:10px">أداء الموديلات</div>${Object.entries(mm).map(([m,d])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px"><span>${m} (${d.count})</span><span style="color:var(--success)">${fmt(d.profit)} د</span></div>`).join('')||'لا مبيعات'}</div><div><div style="font-weight:600;margin-bottom:10px">أداء البائعين</div>${Object.entries(sm).map(([n,d])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px"><span>${n} (${d.count})</span><span>${fmt(d.revenue)} د</span></div>`).join('')||'لا مبيعات'}</div></div></div></div>`;
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', async ()=>{
+  document.getElementById('m-date').value=today();
+  document.getElementById('s-date').value=today();
+  document.getElementById('e-date').value=today();
+  document.getElementById('tr-date').value=today();
+  document.getElementById('rpt-month').value=thisMonth();
+
+  const ok = await loadAll();
+  document.getElementById('loading-overlay').classList.add('hidden');
+  if(ok){ renderDashboard(); renderStaff(); }
+  else { toast('❌ تعذر الاتصال — تحقق من المفتاح'); }
+});
+</script>
+</body>
+</html>
